@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 1. Utenti
+model User {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  cognome   String
+  email     String   @unique
+  password  String
+  ruolo     Role     @default(STUDENTE)
+  matricola String?  @unique
+
+  corsiInsegnati Corso[]       @relation("DocenteCorsi")
+  iscrizioni     Iscrizione[]
+  consegne       Consegna[]
+}
+
+enum Role {
+  STUDENTE
+  DOCENTE
+}
+
+// 2. Corsi
+model Corso {
+  id          Int      @id @default(autoincrement())
+  nome        String
+  annoAccad   String
+  docenteId   Int
+  docente     User     @relation("DocenteCorsi", fields: [docenteId], references: [id])
+
+  iscrizioni  Iscrizione[]
+  prove       Prova[]
+}
+
+// 3. Iscrizioni
+model Iscrizione {
+  studenteId Int
+  corsoId    Int
+  studente   User  @relation(fields: [studenteId], references: [id])
+  corso Corso @relation(fields: [corsoId], references: [id], onDelete: Cascade)
+
+  @@id([studenteId, corsoId])
+}
+
+// 4. Prove
+model Prova {
+  id          Int       @id @default(autoincrement())
+  titolo      String
+  descrizione String?
+  tipo        TipoProva
+  scadenza    DateTime
+  peso        Float
+  corsoId     Int
+  corso Corso @relation(fields: [corsoId], references: [id], onDelete: Cascade)
+
+  consegne    Consegna[]
+}
+
+// 5. Consegne
+model Consegna {
+  id           Int      @id @default(autoincrement())
+  fileUrl      String?
+  testo        String?
+  dataConsegna DateTime @default(now())
+  provaId      Int
+  studenteId   Int
+
+  prova Prova @relation(fields: [provaId], references: [id], onDelete: Cascade)
+  studente     User     @relation(fields: [studenteId], references: [id])
+  valutazione  Valutazione?
+}
+
+// 6. Valutazioni
+model Valutazione {
+  id              Int      @id @default(autoincrement())
+  voto            Float
+  feedbackDocente String?
+  feedbackAi      String?
+  consegnaId      Int      @unique
+  consegna Consegna @relation(fields: [consegnaId], references: [id], onDelete: Cascade)
+}
+
+enum TipoProva {
+  HOMEWORK
+  IN_ITINERE
+  PROVA_FINALE
+  PROGETTO
+}
