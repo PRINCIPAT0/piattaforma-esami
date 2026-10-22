@@ -78,7 +78,6 @@ export default function DashboardStudente() {
                 <p className="text-gray-500 text-xs mt-0.5">{profilo.email}</p>
               </div>
               
-              {/* --------------------------- */}
               <div className="ml-2 pl-4 border-l border-gray-200">
                 <button 
                   onClick={handleLogout}
@@ -87,11 +86,9 @@ export default function DashboardStudente() {
                   Esci
                 </button>
               </div>
-              {/* --------------------------- */}
             </div>
           )}
         </div>
-        {/* ----------------------------------- */}
 
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">Corsi Disponibili</h2>

@@ -10,8 +10,12 @@ export default function DettaglioCorsoStudente() {
   const corsoId = parseInt(params.id as string);
 
   const [corso, setCorso] = useState<any>(null);
+  
   const [testoConsegna, setTestoConsegna] = useState<{ [key: number]: string }>({});
   const [messaggio, setMessaggio] = useState<{ [key: number]: string }>({});
+  
+  const [fileConsegna, setFileConsegna] = useState<{ [key: number]: File | null }>({});
+  const [erroreFile, setErroreFile] = useState<{ [key: number]: string }>({});
 
   const caricaCorso = async () => {
     const dati = await ottieniDettaglioCorsoStudente(corsoId);
@@ -22,14 +26,60 @@ export default function DettaglioCorsoStudente() {
     if (corsoId) caricaCorso();
   }, [corsoId]);
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, provaId: number) => {
+    setErroreFile({ ...erroreFile, [provaId]: "" });
+    const fileSelezionato = e.target.files?.[0];
+    
+    if (!fileSelezionato) {
+      setFileConsegna({ ...fileConsegna, [provaId]: null });
+      return;
+    }
+
+    const limiteMB = 1;
+    if (fileSelezionato.size > limiteMB * 1024 * 1024) {
+      setErroreFile({ ...erroreFile, [provaId]: `Il file è troppo grande. Massimo ${limiteMB}MB.` });
+      e.target.value = ''; 
+      return;
+    }
+
+    const estensioniAmmesse = ['.py', '.js', '.html', '.txt', '.cpp', '.java'];
+    const nomeFileMinuscolo = fileSelezionato.name.toLowerCase();
+    const estensioneValida = estensioniAmmesse.some(ext => nomeFileMinuscolo.endsWith(ext));
+
+    if (!estensioneValida) {
+      setErroreFile({ ...erroreFile, [provaId]: "Formato non supportato. Usa .py, .js, .html, ecc." });
+      e.target.value = '';
+      return;
+    }
+
+    setFileConsegna({ ...fileConsegna, [provaId]: fileSelezionato });
+  };
+
   const handleConsegna = async (provaId: number) => {
-    const testo = testoConsegna[provaId];
-    if (!testo) return;
-    setMessaggio({ ...messaggio, [provaId]: "Invio in corso..." });
-    const risultato = await inviaConsegna({ provaId, testo });
+    const testo = testoConsegna[provaId] || "";
+    const file = fileConsegna[provaId];
+
+    if (!testo && !file) {
+      setMessaggio({ ...messaggio, [provaId]: "Inserisci un testo o carica un file sorgente." });
+      return;
+    }
+
+    setMessaggio({ ...messaggio, [provaId]: "Lettura file e invio in corso..." });
+
+    let testoFile = undefined;
+    let nomeFile = undefined;
+
+    if (file) {
+      testoFile = await file.text();
+      nomeFile = file.name;
+    }
+
+    const risultato = await inviaConsegna({ provaId, testo, nomeFile, testoFile });
+    
     if (risultato.success) {
       setMessaggio({ ...messaggio, [provaId]: "" }); 
       setTestoConsegna({ ...testoConsegna, [provaId]: "" }); 
+      setFileConsegna({ ...fileConsegna, [provaId]: null }); 
       caricaCorso();
     } else {
       setMessaggio({ ...messaggio, [provaId]: risultato.error || "Errore" });
@@ -57,7 +107,6 @@ export default function DettaglioCorsoStudente() {
           <p className="text-gray-600">Docente: {corso.docente.nome} {corso.docente.cognome}</p>
         </div>
 
-        {}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-blue-200 mb-8 flex flex-col md:flex-row gap-6 items-center">
           <div className="flex-1 w-full">
             <h2 className="text-lg font-bold text-blue-900 mb-2">Il tuo rendimento</h2>
@@ -65,19 +114,23 @@ export default function DettaglioCorsoStudente() {
               Hai completato il <span className="font-bold text-gray-900">{corso.statistiche.pesoValutato}%</span> del corso.
             </p>
           </div>
-          
           <div className="flex gap-4 w-full md:w-auto">
             <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg text-center flex-1">
               <p className="text-xs font-semibold text-blue-800 uppercase tracking-wide">Voto Attuale</p>
-              <p className="text-3xl font-bold text-blue-900 mt-1">{corso.statistiche.votoAttuale}<span className="text-lg text-blue-600">/100</span></p>
+              <p className="text-3xl font-bold text-blue-900 mt-1">
+                {corso.statistiche.votoAttuale >= 31 ? "30L" : corso.statistiche.votoAttuale}
+                <span className="text-lg text-blue-600">/30</span>
+              </p>
             </div>
             <div className="bg-gray-50 border border-gray-200 p-4 rounded-lg text-center flex-1">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Max Raggiungibile</p>
-              <p className="text-3xl font-bold text-gray-700 mt-1">{corso.statistiche.votoMassimo}<span className="text-lg text-gray-400">/100</span></p>
+              <p className="text-3xl font-bold text-gray-700 mt-1">
+                {corso.statistiche.votoMassimo >= 31 ? "30L" : corso.statistiche.votoMassimo}
+                <span className="text-lg text-gray-400">/30</span>
+              </p>
             </div>
           </div>
         </div>
-        {/* ----------------------------- */}
 
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
           <h2 className="text-xl font-semibold text-gray-800 mb-6">Prove da completare</h2>
@@ -117,6 +170,11 @@ export default function DettaglioCorsoStudente() {
                             <p className={`text-xs mt-1 ${inRitardo ? 'text-yellow-700' : 'text-green-700'}`}>
                               Data invio: {new Date(consegnaEffettuata.dataConsegna).toLocaleString("it-IT")}
                             </p>
+                            {consegnaEffettuata.nomeFile && (
+                              <p className="text-xs mt-1 text-gray-600 font-medium">
+                                File allegato: {consegnaEffettuata.nomeFile}
+                              </p>
+                            )}
                           </div>
                           
                           {!consegnaEffettuata.valutazione && (
@@ -131,7 +189,9 @@ export default function DettaglioCorsoStudente() {
                         
                         {consegnaEffettuata.valutazione ? (
                           <div className={`mt-3 p-3 bg-white border rounded ${inRitardo ? 'border-yellow-300' : 'border-green-300'}`}>
-                            <p className="text-sm font-bold text-gray-900">Voto: {consegnaEffettuata.valutazione.voto} / 100</p>
+                            <p className="text-sm font-bold text-gray-900">
+                              Voto: {consegnaEffettuata.valutazione.voto === 31 ? "30L" : consegnaEffettuata.valutazione.voto} / 30
+                            </p>
                             {consegnaEffettuata.valutazione.feedbackDocente && (
                               <p className="text-sm text-gray-700 mt-1">Feedback Docente: {consegnaEffettuata.valutazione.feedbackDocente}</p>
                             )}
@@ -141,26 +201,46 @@ export default function DettaglioCorsoStudente() {
                         )}
                       </div>
                     ) : (
-                      <div className="mt-4">
+                      <div className="mt-4 bg-white p-4 rounded-lg border border-gray-200">
                         {isScaduta && (
-                          <p className="text-xs font-medium text-red-600 mb-2">
+                          <p className="text-xs font-medium text-red-600 mb-3">
                             ⚠️ Attenzione: la scadenza è superata. La tua consegna verrà registrata in ritardo.
                           </p>
                         )}
-                        <textarea 
-                          rows={2}
-                          placeholder="Inserisci qui il testo della tua consegna o il link al tuo elaborato (es. Google Drive, GitHub)..."
-                          value={testoConsegna[prova.id] || ""}
-                          onChange={(e) => setTestoConsegna({ ...testoConsegna, [prova.id]: e.target.value })}
-                          className={`text-gray-900 placeholder-gray 200 w-full px-3 py-2 border rounded-md text-sm outline-none focus:ring-blue-500 ${isScaduta ? 'border-red-300' : 'border-gray-300'}`}
-                        />
-                        <button 
-                          onClick={() => handleConsegna(prova.id)}
-                          className={`mt-2 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors ${isScaduta ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-blue-600 hover:bg-blue-700'}`}
-                        >
-                          Invia Consegna
-                        </button>
-                        {messaggio[prova.id] && <span className="ml-3 text-sm text-blue-600">{messaggio[prova.id]}</span>}
+                        
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-700 mb-1">Note / Elaborato testuale</label>
+                            <textarea 
+                              rows={2}
+                              placeholder="Inserisci qui il testo o eventuali note..."
+                              value={testoConsegna[prova.id] || ""}
+                              onChange={(e) => setTestoConsegna({ ...testoConsegna, [prova.id]: e.target.value })}
+                              className={`text-gray-900 placeholder-gray-400 w-full px-3 py-2 border rounded-md text-sm outline-none focus:ring-blue-500 ${isScaduta ? 'border-red-300' : 'border-gray-300'}`}
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-700 mb-1">Carica file sorgente (opzionale)</label>
+                            <input 
+                              type="file" 
+                              onChange={(e) => handleFileChange(e, prova.id)}
+                              accept=".py,.js,.html,.txt,.cpp,.java" 
+                              className={`w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 border rounded-md p-1 ${isScaduta ? 'border-red-300' : 'border-gray-300'}`}
+                            />
+                            {erroreFile[prova.id] && <p className="text-red-500 text-xs mt-1">{erroreFile[prova.id]}</p>}
+                          </div>
+                        </div>
+
+                        <div className="mt-4 flex items-center">
+                          <button 
+                            onClick={() => handleConsegna(prova.id)}
+                            className={`text-white px-4 py-2 rounded-md text-sm font-medium transition-colors ${isScaduta ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+                          >
+                            Invia Consegna
+                          </button>
+                          {messaggio[prova.id] && <span className="ml-3 text-sm font-medium text-blue-600">{messaggio[prova.id]}</span>}
+                        </div>
                       </div>
                     )}
                   </div>

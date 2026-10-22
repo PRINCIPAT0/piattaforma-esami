@@ -66,8 +66,9 @@ model Prova {
 // 5. Consegne
 model Consegna {
   id           Int      @id @default(autoincrement())
-  fileUrl      String?
   testo        String?
+  testoFile    String?
+  nomeFile     String?
   dataConsegna DateTime @default(now())
   provaId      Int
   studenteId   Int

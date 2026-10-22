@@ -8,10 +8,19 @@ import { creaCorso, ottieniCorsiDocente, eliminaCorso, ottieniProfiloUtente, ese
 export default function DashboardDocente() {
   const router = useRouter();
   const [nomeCorso, setNomeCorso] = useState("");
-  const [annoAccad, setAnnoAccad] = useState("");
+  
+  const [annoAccad, setAnnoAccad] = useState("2025/2026");
   const [messaggio, setMessaggio] = useState("");
   const [corsi, setCorsi] = useState<any[]>([]);
   const [profilo, setProfilo] = useState<{nome: string, cognome: string, matricola: string | null, email: string} | null>(null);
+
+  const anniAccademici = [
+    "2023/2024",
+    "2024/2025",
+    "2025/2026",
+    "2026/2027",
+    "2027/2028"
+  ];
 
   const caricaDati = async () => {
     try {
@@ -38,7 +47,7 @@ export default function DashboardDocente() {
     if (risultato.success) {
       setMessaggio("Corso creato!");
       setNomeCorso("");
-      setAnnoAccad("");
+      setAnnoAccad("2025/2026"); 
       caricaDati();
     } else {
       setMessaggio(risultato.error || "Errore");
@@ -54,7 +63,6 @@ export default function DashboardDocente() {
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-5xl mx-auto">
         
-        {/* ------------------- */}
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4 border-b border-gray-200 pb-6">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Area Docente</h1>
@@ -75,7 +83,6 @@ export default function DashboardDocente() {
                 <p className="text-gray-500 text-xs mt-0.5">{profilo.email}</p>
               </div>
               
-              {/* ---------------------- */}
               <div className="ml-2 pl-4 border-l border-gray-200">
                 <button 
                   onClick={handleLogout}
@@ -84,7 +91,6 @@ export default function DashboardDocente() {
                   Esci
                 </button>
               </div>
-              {/* --------------------------- */}
             </div>
           )}
         </div>
@@ -124,9 +130,37 @@ export default function DashboardDocente() {
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 h-fit">
             <h2 className="text-xl font-semibold text-gray-800 mb-4">Nuovo Corso</h2>
             <form onSubmit={handleCreaCorso} className="space-y-4">
-              <input type="text" required value={nomeCorso} onChange={(e) => setNomeCorso(e.target.value)} placeholder="Nome Corso (es. Informatica)" className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900" />
-              <input type="text" required value={annoAccad} onChange={(e) => setAnnoAccad(e.target.value)} placeholder="Anno (es. 2024/2025)" className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900" />
-              <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded-md font-medium text-sm hover:bg-blue-700 transition-colors">Aggiungi Corso</button>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Nome dell'insegnamento</label>
+                <input 
+                  type="text" 
+                  required 
+                  value={nomeCorso} 
+                  onChange={(e) => setNomeCorso(e.target.value)} 
+                  placeholder="Es. Informatica" 
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500" 
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Anno Accademico</label>
+                <select 
+                  required 
+                  value={annoAccad} 
+                  onChange={(e) => setAnnoAccad(e.target.value)} 
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 bg-white outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {anniAccademici.map((anno) => (
+                    <option key={anno} value={anno}>
+                      {anno}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded-md font-medium text-sm hover:bg-blue-700 transition-colors">
+                Aggiungi Corso
+              </button>
               {messaggio && <p className="text-sm text-center mt-2 text-gray-600">{messaggio}</p>}
             </form>
           </div>

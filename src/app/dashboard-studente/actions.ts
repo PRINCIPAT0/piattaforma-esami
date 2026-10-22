@@ -32,12 +32,17 @@ export async function ottieniCorsiConIscrizione() {
 export async function iscrivitiCorso(corsoId: number) {
   try {
     const cookieStore = await cookies();
-    const utenteId = cookieStore.get("utente_id")?.value;
+    const utenteId = parseInt(cookieStore.get("utente_id")?.value || "0");
     if (!utenteId) return { success: false, error: "Non autorizzato" };
+
+    const iscrizioneEsistente = await prisma.iscrizione.findFirst({
+      where: { studenteId: utenteId, corsoId: corsoId }
+    });
+    if (iscrizioneEsistente) return { success: false, error: "Sei già iscritto a questo corso." };
 
     await prisma.iscrizione.create({
       data: {
-        studenteId: parseInt(utenteId),
+        studenteId: utenteId,
         corsoId: corsoId
       }
     });
@@ -50,9 +55,13 @@ export async function iscrivitiCorso(corsoId: number) {
 export async function ottieniDettaglioCorsoStudente(corsoId: number) {
   try {
     const cookieStore = await cookies();
-    const utenteId = cookieStore.get("utente_id")?.value;
-    if (!utenteId) return null;
-    const studenteId = parseInt(utenteId);
+    const studenteId = parseInt(cookieStore.get("utente_id")?.value || "0");
+    if (!studenteId) return null;
+
+    const iscrizione = await prisma.iscrizione.findFirst({
+      where: { studenteId, corsoId }
+    });
+    if (!iscrizione) return null;
 
     const corso = await prisma.corso.findUnique({
       where: { id: corsoId },
@@ -84,7 +93,9 @@ export async function ottieniDettaglioCorsoStudente(corsoId: number) {
     });
 
     const pesoRimanente = 100 - pesoValutato;
-    const votoMassimoPossibile = votoAttuale + pesoRimanente; 
+    
+    const potenzialeFuturo = (31 * pesoRimanente) / 100;
+    const votoMassimoPossibile = votoAttuale + potenzialeFuturo; 
 
     return {
       ...corso,
@@ -92,7 +103,7 @@ export async function ottieniDettaglioCorsoStudente(corsoId: number) {
         votoAttuale: parseFloat(votoAttuale.toFixed(1)),
         votoMassimo: parseFloat(votoMassimoPossibile.toFixed(1)),
         pesoValutato: parseFloat(pesoValutato.toFixed(1)),
-        superato: votoAttuale >= 60 && pesoValutato === 100
+        superato: votoAttuale >= 18 && pesoValutato === 100
       }
     };
   } catch (error) {
@@ -101,27 +112,62 @@ export async function ottieniDettaglioCorsoStudente(corsoId: number) {
   }
 }
 
-export async function inviaConsegna(dati: { provaId: number; testo: string }) {
+export async function inviaConsegna(dati: { 
+  provaId: number; 
+  testo?: string; 
+  nomeFile?: string; 
+  testoFile?: string 
+}) {
   try {
     const cookieStore = await cookies();
-    const utenteId = cookieStore.get("utente_id")?.value;
-    if (!utenteId) return { success: false, error: "Non autorizzato" };
+    const studenteId = parseInt(cookieStore.get("utente_id")?.value || "0");
+    if (!studenteId) return { success: false, error: "Non autorizzato" };
+
+    const prova = await prisma.prova.findUnique({
+      where: { id: dati.provaId },
+      include: { 
+        corso: { 
+          include: { 
+            iscrizioni: { where: { studenteId } } 
+          } 
+        } 
+      }
+    });
+
+    if (!prova || prova.corso.iscrizioni.length === 0) {
+      return { success: false, error: "Non sei iscritto al corso relativo a questa prova." };
+    }
 
     await prisma.consegna.create({
       data: {
         provaId: dati.provaId,
-        studenteId: parseInt(utenteId),
-        testo: dati.testo, 
+        studenteId: studenteId,
+        testo: dati.testo || null, 
+        nomeFile: dati.nomeFile || null,
+        testoFile: dati.testoFile || null
       }
     });
+    
     return { success: true };
   } catch (error) {
+    console.error("Errore invio consegna:", error);
     return { success: false, error: "Errore durante l'invio della consegna." };
   }
 }
 
 export async function eliminaConsegna(consegnaId: number) {
   try {
+    const cookieStore = await cookies();
+    const studenteId = parseInt(cookieStore.get("utente_id")?.value || "0");
+
+    const consegna = await prisma.consegna.findUnique({
+      where: { id: consegnaId, studenteId: studenteId },
+      include: { valutazione: true }
+    });
+
+    if (!consegna) return { success: false, error: "Consegna non trovata o accesso negato." };
+    if (consegna.valutazione) return { success: false, error: "Non puoi ritirare una consegna già valutata dal docente." };
+
     await prisma.consegna.delete({
       where: { id: consegnaId }
     });
@@ -134,10 +180,8 @@ export async function eliminaConsegna(consegnaId: number) {
 export async function disiscrivitiCorso(corsoId: number) {
   try {
     const cookieStore = await cookies();
-    const utenteId = cookieStore.get("utente_id")?.value;
-    if (!utenteId) return { success: false, error: "Non autorizzato" };
-
-    const studenteId = parseInt(utenteId);
+    const studenteId = parseInt(cookieStore.get("utente_id")?.value || "0");
+    if (!studenteId) return { success: false, error: "Non autorizzato" };
 
     const proveDelCorso = await prisma.prova.findMany({
       where: { corsoId: corsoId },

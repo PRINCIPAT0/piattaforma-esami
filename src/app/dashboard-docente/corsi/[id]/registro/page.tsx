@@ -39,7 +39,6 @@ export default function RegistroClasse() {
               <thead className="bg-gray-100 text-gray-600 font-semibold uppercase text-xs">
                 <tr>
                   <th className="px-6 py-4">Studente</th>
-                  {/* NUOVA COLONNA INTESTAZIONE */}
                   <th className="px-6 py-4">Matricola</th>
                   <th className="px-6 py-4">% Valutata</th>
                   <th className="px-6 py-4">Voto Attuale</th>
@@ -60,7 +59,6 @@ export default function RegistroClasse() {
                       <td className="px-6 py-4 font-medium text-gray-900">
                         {stud.cognome} {stud.nome}
                       </td>
-                      {/* -------------------- */}
                       <td className="px-6 py-4 text-gray-600 font-mono text-sm">
                         {stud.matricola || "N/A"}
                       </td>
@@ -73,10 +71,10 @@ export default function RegistroClasse() {
                         </div>
                       </td>
                       <td className="px-6 py-4 font-bold text-blue-700 text-base">
-                        {stud.statistiche.votoAttuale}
+                        {stud.statistiche.votoAttuale >= 31 ? "30L" : stud.statistiche.votoAttuale}
                       </td>
-                      <td className="px-6 py-4 text-gray-500">
-                        {stud.statistiche.votoMassimo}
+                      <td className="px-6 py-4 text-gray-500 font-semibold">
+                        {stud.statistiche.votoMassimo >= 31 ? "30L" : stud.statistiche.votoMassimo}
                       </td>
                       <td className="px-6 py-4 text-center">
                         {stud.statistiche.superato ? (

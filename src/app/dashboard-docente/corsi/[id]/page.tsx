@@ -61,7 +61,6 @@ export default function DettaglioCorso() {
             <p className="text-gray-500">Anno Accademico: {corso.annoAccad}</p>
           </div>
           
-          {/* -------------------- */}
           <div className="flex gap-3">
             <Link 
               href={`/dashboard-docente/corsi/${corso.id}/registro`}
@@ -102,7 +101,6 @@ export default function DettaglioCorso() {
                   <input type="datetime-local" required value={scadenza} onChange={(e) => setScadenza(e.target.value)} className="mt-1 w-full px-3 py-2 border rounded-md text-sm text-gray-900 outline-none focus:ring-blue-500" />
                 </div>
                 <div>
-                  {/* ---------------------- */}
                   {(() => {
                     const pesoUsato = corso.prove.reduce((acc: number, p: any) => acc + p.peso, 0);
                     const pesoRimanente = 100 - pesoUsato;

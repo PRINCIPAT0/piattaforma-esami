@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
+import { valutaElaboratoConGroq, valutaElaboratoConGemini } from "@/services/evaluator"; 
 
 export async function creaCorso(dati: { nome: string; annoAccad: string }) {
   try {
@@ -41,8 +42,14 @@ export async function ottieniCorsiDocente() {
 
 export async function ottieniDettaglioCorso(corsoId: number) {
   try {
+    const cookieStore = await cookies();
+    const utenteId = parseInt(cookieStore.get("utente_id")?.value || "0");
+
     return await prisma.corso.findUnique({
-      where: { id: corsoId },
+      where: { 
+        id: corsoId,
+        docenteId: utenteId 
+      },
       include: {
         prove: {
           orderBy: { scadenza: 'asc' }
@@ -56,6 +63,14 @@ export async function ottieniDettaglioCorso(corsoId: number) {
 
 export async function creaProva(dati: any) {
   try {
+    const cookieStore = await cookies();
+    const utenteId = parseInt(cookieStore.get("utente_id")?.value || "0");
+
+    const corso = await prisma.corso.findUnique({
+      where: { id: dati.corsoId, docenteId: utenteId }
+    });
+    if (!corso) return { success: false, error: "Accesso negato: non sei il proprietario di questo corso." };
+
     const proveEsistenti = await prisma.prova.findMany({
       where: { corsoId: dati.corsoId },
       select: { peso: true }
@@ -90,6 +105,12 @@ export async function creaProva(dati: any) {
 
 export async function eliminaCorso(corsoId: number) {
   try {
+    const cookieStore = await cookies();
+    const utenteId = parseInt(cookieStore.get("utente_id")?.value || "0");
+
+    const corso = await prisma.corso.findUnique({ where: { id: corsoId, docenteId: utenteId }});
+    if (!corso) return { success: false, error: "Accesso negato." };
+
     await prisma.corso.delete({
       where: { id: corsoId }
     });
@@ -101,6 +122,16 @@ export async function eliminaCorso(corsoId: number) {
 
 export async function eliminaProva(provaId: number) {
   try {
+    const cookieStore = await cookies();
+    const utenteId = parseInt(cookieStore.get("utente_id")?.value || "0");
+
+    const prova = await prisma.prova.findUnique({ 
+      where: { id: provaId }, include: { corso: true } 
+    });
+    if (!prova || prova.corso.docenteId !== utenteId) {
+      return { success: false, error: "Accesso negato." };
+    }
+
     await prisma.prova.delete({
       where: { id: provaId }
     });
@@ -112,10 +143,13 @@ export async function eliminaProva(provaId: number) {
 
 export async function ottieniConsegneProva(provaId: number) {
   try {
-    return await prisma.prova.findUnique({
+    const cookieStore = await cookies();
+    const utenteId = parseInt(cookieStore.get("utente_id")?.value || "0");
+
+    const prova = await prisma.prova.findUnique({
       where: { id: provaId },
       include: {
-        corso: { select: { nome: true, id: true } },
+        corso: { select: { nome: true, id: true, docenteId: true } },
         consegne: {
           include: {
             studente: { select: { nome: true, cognome: true } },
@@ -125,6 +159,10 @@ export async function ottieniConsegneProva(provaId: number) {
         }
       }
     });
+
+    if (!prova || prova.corso.docenteId !== utenteId) return null;
+
+    return prova;
   } catch (error) {
     console.error(error);
     return null;
@@ -133,8 +171,20 @@ export async function ottieniConsegneProva(provaId: number) {
 
 export async function valutaConsegna(dati: { consegnaId: number; voto: number; feedback: string }) {
   try {
-    if (dati.voto < 0 || dati.voto > 100) {
-      return { success: false, error: "Il voto deve essere compreso tra 0 e 100." };
+    const cookieStore = await cookies();
+    const utenteId = parseInt(cookieStore.get("utente_id")?.value || "0");
+
+    const consegna = await prisma.consegna.findUnique({
+      where: { id: dati.consegnaId },
+      include: { prova: { include: { corso: true } } }
+    });
+
+    if (!consegna || consegna.prova.corso.docenteId !== utenteId) {
+      return { success: false, error: "Non hai i permessi per valutare questa consegna." };
+    }
+
+    if (dati.voto < 0 || dati.voto > 31) {
+      return { success: false, error: "Il voto deve essere compreso tra 0 e 31." };
     }
 
     await prisma.valutazione.create({
@@ -152,6 +202,18 @@ export async function valutaConsegna(dati: { consegnaId: number; voto: number; f
 
 export async function eliminaValutazione(valutazioneId: number) {
   try {
+    const cookieStore = await cookies();
+    const utenteId = parseInt(cookieStore.get("utente_id")?.value || "0");
+
+    const val = await prisma.valutazione.findUnique({
+      where: { id: valutazioneId },
+      include: { consegna: { include: { prova: { include: { corso: true } } } } }
+    });
+
+    if (!val || val.consegna.prova.corso.docenteId !== utenteId) {
+      return { success: false, error: "Accesso negato." };
+    }
+
     await prisma.valutazione.delete({
       where: { id: valutazioneId }
     });
@@ -163,8 +225,11 @@ export async function eliminaValutazione(valutazioneId: number) {
 
 export async function ottieniRegistroClasse(corsoId: number) {
   try {
+    const cookieStore = await cookies();
+    const utenteId = parseInt(cookieStore.get("utente_id")?.value || "0");
+
     const corso = await prisma.corso.findUnique({
-      where: { id: corsoId },
+      where: { id: corsoId, docenteId: utenteId },
       include: {
         iscrizioni: {
           include: {
@@ -195,7 +260,8 @@ export async function ottieniRegistroClasse(corsoId: number) {
       });
 
       const pesoRimanente = 100 - pesoValutato;
-      const votoMassimoPossibile = votoAttuale + pesoRimanente;
+      const potenzialeFuturo = (31 * pesoRimanente) / 100;
+      const votoMassimoPossibile = votoAttuale + potenzialeFuturo;
 
       return {
         idStudente: iscrizione.studente.id,
@@ -206,8 +272,8 @@ export async function ottieniRegistroClasse(corsoId: number) {
           votoAttuale: parseFloat(votoAttuale.toFixed(1)),
           votoMassimo: parseFloat(votoMassimoPossibile.toFixed(1)),
           pesoValutato: parseFloat(pesoValutato.toFixed(1)),
-          superato: votoAttuale >= 60 && pesoValutato === 100,
-          bocciato: votoMassimoPossibile < 60 // Matematicamente impossibile arrivare a 60
+          superato: votoAttuale >= 18 && pesoValutato === 100,
+          bocciato: votoMassimoPossibile < 18
         }
       };
     });
@@ -238,6 +304,49 @@ export async function ottieniProfiloUtente() {
   } catch (error) {
     console.error("Errore recupero profilo:", error);
     return null;
+  }
+}
+
+export async function chiediSupportoIA(
+  consegnaId: number, 
+  provider: "groq" | "gemini" = "groq",
+  istruzioniExtra: string = ""
+) {
+  try {
+    const consegna = await prisma.consegna.findUnique({
+      where: { id: consegnaId },
+      include: { prova: true }
+    });
+
+    if (!consegna) {
+      return { success: false, error: "Consegna non trovata nel database." };
+    }
+
+    const contenutoStudente = `
+      ECCO L'ELABORATO DELLO STUDENTE DA VALUTARE:
+
+      --- NOTE TESTUALI DELLO STUDENTE ---
+      ${consegna.testo || 'Nessuna nota testuale aggiunta.'}
+      
+      --- CODICE/FILE ALLEGATO (${consegna.nomeFile || 'Senza nome'}) ---
+      \`\`\`
+      ${consegna.testoFile || 'Nessun codice o file caricato.'}
+      \`\`\`
+    `;
+
+    const criteriProva = `Valuta in base alle specifiche di questa prova: ${consegna.prova.titolo}`;
+
+    let bozzaValutazione;
+    if (provider === "gemini") {
+      bozzaValutazione = await valutaElaboratoConGemini(contenutoStudente, criteriProva, istruzioniExtra);
+    } else {
+      bozzaValutazione = await valutaElaboratoConGroq(contenutoStudente, criteriProva, istruzioniExtra);
+    }
+
+    return { success: true, data: bozzaValutazione };
+  } catch (error: any) {
+    console.error(`Errore IA (${provider}):`, error);
+    return { success: false, error: "Errore durante l'elaborazione IA." };
   }
 }
 
