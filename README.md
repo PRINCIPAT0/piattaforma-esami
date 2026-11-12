@@ -25,8 +25,8 @@ Crea un file `.env` nella root del progetto. Copia il seguente template e compil
 DATABASE_URL="file:./dev.db"
 
 # Credenziali per il setup della Segreteria
-SUPERADMIN_NOME="nome"
-SUPERADMIN_COGNOME="nome"
+SUPERADMIN_NOME="Nome"
+SUPERADMIN_COGNOME="Cognome"
 SUPERADMIN_EMAIL="nome.cognome@admin.uni.it"
 SUPERADMIN_PASSWORD="AdminPassword123!"
 
