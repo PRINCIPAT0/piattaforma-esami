@@ -27,7 +27,7 @@ export default function RegistroClasse() {
         
         <div className="mb-8">
           <Link href={`/dashboard-docente/corsi/${dati.corsoId}`} className="text-sm text-blue-600 hover:underline mb-2 inline-block">
-            &larr; Torna alle prove
+            ← Torna alle prove
           </Link>
           <h1 className="text-3xl font-bold text-gray-900">Registro: {dati.nome}</h1>
           <p className="text-gray-500">Monitoraggio andamento studenti (A.A. {dati.annoAccad})</p>
@@ -70,18 +70,23 @@ export default function RegistroClasse() {
                           <span className="text-xs text-gray-500">{stud.statistiche.pesoValutato}%</span>
                         </div>
                       </td>
+                      
                       <td className="px-6 py-4 font-bold text-blue-700 text-base">
-                        {stud.statistiche.votoAttuale >= 31 ? "30L" : stud.statistiche.votoAttuale}
+                        {stud.statistiche.votoFormattato}
                       </td>
+                      
                       <td className="px-6 py-4 text-gray-500 font-semibold">
-                        {stud.statistiche.votoMassimo >= 31 ? "30L" : stud.statistiche.votoMassimo}
+                        {stud.statistiche.votoMassimoPossibile !== null 
+                          ? (stud.statistiche.votoMassimoPossibile >= 30.5 ? "30 e lode" : `${Math.round(stud.statistiche.votoMassimoPossibile)}/30`) 
+                          : <span className="text-xs font-normal italic text-gray-400">Incompleto</span>}
                       </td>
+                      
                       <td className="px-6 py-4 text-center">
-                        {stud.statistiche.superato ? (
+                        {stud.statistiche.esameSuperato ? (
                           <span className="inline-block px-3 py-1 bg-green-100 text-green-800 text-xs font-bold rounded-full">
                             Superato
                           </span>
-                        ) : stud.statistiche.bocciato ? (
+                        ) : stud.statistiche.bocciatoMatematicamente ? (
                           <span className="inline-block px-3 py-1 bg-red-100 text-red-800 text-xs font-bold rounded-full">
                             Bocciato
                           </span>
@@ -98,7 +103,6 @@ export default function RegistroClasse() {
             </table>
           </div>
         </div>
-
       </div>
     </div>
   );

@@ -55,7 +55,7 @@ export default function DettaglioCorso() {
         <div className="mb-8 flex items-center justify-between">
           <div>
             <Link href="/dashboard-docente" className="text-sm text-blue-600 hover:underline mb-2 inline-block">
-              &larr; Torna ai corsi
+              ← Torna ai corsi
             </Link>
             <h1 className="text-3xl font-bold text-gray-900">{corso.nome}</h1>
             <p className="text-gray-500">Anno Accademico: {corso.annoAccad}</p>
@@ -123,8 +123,9 @@ export default function DettaglioCorso() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Descrizione (Opzionale)</label>
-                <textarea value={descrizione} onChange={(e) => setDescrizione(e.target.value)} rows={2} placeholder="Regole, argomenti trattati, formato file..." className="mt-1 w-full px-3 py-2 border rounded-md text-sm text-gray-900 outline-none focus:ring-blue-500"></textarea>
+                {/* MODIFICA: Label aggiornata e attributo required sul tag textarea */}
+                <label className="block text-sm font-medium text-gray-700">Descrizione</label>
+                <textarea required value={descrizione} onChange={(e) => setDescrizione(e.target.value)} rows={2} placeholder="Regole, argomenti trattati, formato file..." className="mt-1 w-full px-3 py-2 border rounded-md text-sm text-gray-900 outline-none focus:ring-blue-500"></textarea>
               </div>
               <button type="submit" disabled={(() => {
                 const pesoUsato = corso.prove.reduce((acc: number, p: any) => acc + p.peso, 0);

@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Piattaforma Gestione Esami Universitari
 
-## Getting Started
+Progetto accademico (3 CFU) per la simulazione di un sistema informativo universitario.
+La piattaforma gestisce tre ruoli distinti (Studente, Docente, Segreteria/Superadmin) per l'erogazione dei corsi, la sottomissione degli elaborati e la valutazione (manuale e supportata da AI).
 
-First, run the development server:
+## Requisiti di Sistema
+- Node.js (versione 18 o superiore)
+- npm o yarn
+- Database supportato da Prisma (es. SQLite locale, PostgreSQL, MySQL)
+
+## 1. Installazione delle dipendenze
+
+Clona il repository e installa le librerie necessarie eseguendo:
+
+```bash
+npm install
+```
+
+## 2. Configurazione dell'ambiente (.env)
+
+Crea un file `.env` nella root del progetto. Copia il seguente template e compila i campi:
+
+```env
+# URL del Database (es. SQLite locale per test)
+DATABASE_URL="file:./dev.db"
+
+# Credenziali per il setup della Segreteria
+SUPERADMIN_NOME="nome"
+SUPERADMIN_COGNOME="nome"
+SUPERADMIN_EMAIL="nome.cognome@admin.uni.it"
+SUPERADMIN_PASSWORD="AdminPassword123!"
+
+# (FACOLTATIVO) Chiavi API per la correzione automatica degli elaborati
+# Se non fornite, il sistema funzionerà unicamente con la valutazione manuale
+GROQ_API_KEY=""
+GEMINI_API_KEY=""
+```
+
+## 3. Inizializzazione del Database
+
+Per allineare lo schema del database ed effettuare la prima migrazione, lanciare il comando:
+
+```bash
+npx prisma db push
+```
+
+Genera il client Prisma per abilitare l'autocompletamento TypeScript:
+
+```bash
+npx prisma generate
+```
+
+## 4. Setup dell'Account Amministratore (Segreteria)
+
+Popola il database con il primo amministratore utilizzando lo script di setup (che leggerà le credenziali dal file `.env`):
+
+```bash
+npx tsx scripts/init-admin.ts
+```
+
+In caso di successo, il terminale confermerà la creazione dell'account. Da questo momento, sarà possibile usare la piattaforma per creare gli account Docente direttamente dall'interfaccia della Segreteria.
+
+## 5. Avvio dell'Applicazione
+
+Avvia il server in modalità sviluppo:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+L'applicazione sarà disponibile all'indirizzo: http://localhost:3000
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---

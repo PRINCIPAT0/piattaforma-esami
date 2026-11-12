@@ -18,11 +18,12 @@ export default function Home() {
     const risultato = await verificaLogin({ email, password });
 
     if (risultato.success) {
-
       if (risultato.ruolo === "STUDENTE") {
         router.push("/dashboard-studente");
       } else if (risultato.ruolo === "DOCENTE") {
         router.push("/dashboard-docente");
+      } else if (risultato.ruolo === "SUPERADMIN") {
+        router.push("/dashboard-admin");
       }
     } else {
       setErrore(risultato.error || "Si è verificato un errore durante l'accesso.");
@@ -39,7 +40,6 @@ export default function Home() {
         </div>
 
         <form onSubmit={handleLogin} className="space-y-6">
-          {}
           {errore && (
             <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm text-center">
               {errore}

@@ -10,11 +10,14 @@ export default function ValutazioneProva() {
   const provaId = parseInt(params.id as string);
 
   const [prova, setProva] = useState<any>(null);
+  
   const [voti, setVoti] = useState<{ [key: number]: string }>({});
   const [feedbacks, setFeedbacks] = useState<{ [key: number]: string }>({});
   const [istruzioniIa, setIstruzioniIa] = useState<{ [key: number]: string }>({});
   const [messaggio, setMessaggio] = useState<{ [key: number]: string }>({});
   const [loadingAi, setLoadingAi] = useState<{ [key: number]: boolean }>({});
+  
+  const [providerDisabilitati, setProviderDisabilitati] = useState<{ groq: boolean, gemini: boolean }>({ groq: false, gemini: false });
 
   const caricaProva = async () => {
     const dati = await ottieniConsegneProva(provaId);
@@ -30,20 +33,20 @@ export default function ValutazioneProva() {
     const feedback = feedbacks[consegnaId] || "";
 
     if (isNaN(votoFormattato) || votoFormattato < 0 || votoFormattato > 31) {
-      setMessaggio({ ...messaggio, [consegnaId]: "Inserisci un voto valido tra 0 e 31 (usa 31 per la lode)." });
+      setMessaggio(prev => ({ ...prev, [consegnaId]: "Inserisci un voto valido tra 0 e 31 (usa 31 per la lode)." }));
       return;
     }
 
-    setMessaggio({ ...messaggio, [consegnaId]: "Salvataggio..." });
+    setMessaggio(prev => ({ ...prev, [consegnaId]: "Salvataggio..." }));
     const risultato = await valutaConsegna({ consegnaId, voto: votoFormattato, feedback });
 
     if (risultato.success) {
-      setMessaggio({ ...messaggio, [consegnaId]: "Voto salvato!" });
-      setVoti({ ...voti, [consegnaId]: "" });
-      setFeedbacks({ ...feedbacks, [consegnaId]: "" });
+      setMessaggio(prev => ({ ...prev, [consegnaId]: "Voto salvato!" }));
+      setVoti(prev => ({ ...prev, [consegnaId]: "" }));
+      setFeedbacks(prev => ({ ...prev, [consegnaId]: "" }));
       caricaProva();
     } else {
-      setMessaggio({ ...messaggio, [consegnaId]: risultato.error || "Errore" });
+      setMessaggio(prev => ({ ...prev, [consegnaId]: risultato.error || "Errore" }));
     }
   };
 
@@ -59,17 +62,17 @@ export default function ValutazioneProva() {
   };
 
   const handleGeneraIA = async (consegnaId: number, provider: "groq" | "gemini") => {
-    setLoadingAi({ ...loadingAi, [consegnaId]: true });
+    setLoadingAi(prev => ({ ...prev, [consegnaId]: true }));
     
-    const nomeProvider = provider === "groq" ? "Groq (Llama)" : "Google Gemini";
-    setMessaggio({ ...messaggio, [consegnaId]: `Generazione in corso con ${nomeProvider}...` });
+    const nomeProvider = provider === "groq" ? "Groq (OpenAI)" : "Google Gemini";
+    setMessaggio(prev => ({ ...prev, [consegnaId]: `Generazione in corso con ${nomeProvider}...` }));
     
     try {
       const promptDocente = istruzioniIa[consegnaId] || "";
       const risultato = await chiediSupportoIA(consegnaId, provider, promptDocente);
       
       if (risultato.success && risultato.data) {
-        setVoti({ ...voti, [consegnaId]: risultato.data.voto_suggerito.toString() });
+        setVoti(prev => ({ ...prev, [consegnaId]: risultato.data.voto_suggerito.toString() }));
         
         let testoFeedback = risultato.data.osservazioni + "\n";
         if (risultato.data.errori_rilevati && risultato.data.errori_rilevati.length > 0) {
@@ -78,20 +81,26 @@ export default function ValutazioneProva() {
           ).join("\n");
         }
         
-        setFeedbacks({ ...feedbacks, [consegnaId]: testoFeedback.trim() });
-        setMessaggio({ ...messaggio, [consegnaId]: `✨ Bozza generata da ${nomeProvider}! Rivedi e salva.` });
+        setFeedbacks(prev => ({ ...prev, [consegnaId]: testoFeedback.trim() }));
+        setMessaggio(prev => ({ ...prev, [consegnaId]: `✨ Bozza generata da ${nomeProvider}! Rivedi e salva.` }));
+      
       } else {
-        setMessaggio({ ...messaggio, [consegnaId]: risultato.error || "Errore IA" });
+        setMessaggio(prev => ({ ...prev, [consegnaId]: risultato.error || "Errore IA" }));
+        if (risultato.error?.includes("non è configurata")) {
+          setProviderDisabilitati(prev => ({ ...prev, [provider]: true }));
+        }
       }
     } catch (error) {
       console.error(error);
-      setMessaggio({ ...messaggio, [consegnaId]: "Errore di connessione." });
+      setMessaggio(prev => ({ ...prev, [consegnaId]: "Errore di connessione." }));
     } finally {
-      setLoadingAi({ ...loadingAi, [consegnaId]: false });
+      setLoadingAi(prev => ({ ...prev, [consegnaId]: false }));
     }
   };
 
   if (!prova) return <div className="p-8 text-center text-gray-500">Caricamento...</div>;
+
+  const iaGlobalmenteDisabilitata = providerDisabilitati.groq && providerDisabilitati.gemini;
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
@@ -99,11 +108,17 @@ export default function ValutazioneProva() {
         
         <div className="mb-8">
           <Link href={`/dashboard-docente/corsi/${prova.corso.id}`} className="text-sm text-blue-600 hover:underline mb-2 inline-block">
-            &larr; Torna al corso
+            ← Torna al corso
           </Link>
           <h1 className="text-3xl font-bold text-gray-900">{prova.titolo}</h1>
           <p className="text-gray-500">Gestione consegne per il corso di {prova.corso.nome}</p>
         </div>
+
+        {iaGlobalmenteDisabilitata && (
+          <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg text-orange-800 text-sm flex items-center gap-3">
+            <span>⚠️</span> Le chiavi API per il supporto IA non sono configurate sul server. È comunque possibile valutare manualmente le consegne.
+          </div>
+        )}
 
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
           <h2 className="text-xl font-semibold text-gray-800 mb-6">Elenco Elaborati</h2>
@@ -120,13 +135,13 @@ export default function ValutazioneProva() {
                 return (
                   <div key={consegna.id} className="p-5 border border-gray-200 rounded-lg bg-gray-50 flex flex-col md:flex-row gap-6">
                     
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="font-semibold text-lg text-gray-900">
                           {consegna.studente.nome} {consegna.studente.cognome}
                         </h3>
                         {inRitardo && (
-                          <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded font-medium">
+                          <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded font-medium shrink-0">
                             Consegnato in ritardo
                           </span>
                         )}
@@ -138,19 +153,19 @@ export default function ValutazioneProva() {
                       {consegna.testo && (
                         <div className="mb-4">
                            <span className="text-xs font-semibold text-gray-500 uppercase">Note dello studente</span>
-                           <div className="bg-white p-3 mt-1 border border-gray-200 rounded-md text-sm text-gray-700 whitespace-pre-wrap">
+                           <div className="bg-white p-3 mt-1 border border-gray-200 rounded-md text-sm text-gray-700 whitespace-pre-wrap break-words">
                              {consegna.testo}
                            </div>
                         </div>
                       )}
 
                       {consegna.testoFile && (
-                        <div className="mb-4 overflow-hidden">
-                          <span className="text-xs font-semibold text-gray-500 uppercase flex items-center gap-2 mb-1">
-                            File Allegato: <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded normal-case font-mono">{consegna.nomeFile}</span>
+                        <div className="mb-4 w-full">
+                          <span className="text-xs font-semibold text-gray-500 uppercase flex items-center flex-wrap gap-2 mb-1">
+                            File Allegato: <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded normal-case font-mono break-all">{consegna.nomeFile}</span>
                           </span>
-                          <div className="relative">
-                            <pre className="bg-gray-900 text-green-400 p-4 rounded-lg overflow-x-auto overflow-y-auto max-h-96 text-sm font-mono shadow-inner border border-gray-800">
+                          <div className="relative w-full">
+                            <pre className="bg-gray-900 text-green-400 p-4 rounded-lg overflow-auto max-h-96 text-sm font-mono shadow-inner border border-gray-800 w-full max-w-full whitespace-pre">
                               <code>{consegna.testoFile}</code>
                             </pre>
                           </div>
@@ -158,7 +173,7 @@ export default function ValutazioneProva() {
                       )}
                     </div>
 
-                    <div className="w-full md:w-80 bg-white p-4 border border-blue-100 rounded-md shadow-sm">
+                    <div className="w-full md:w-80 shrink-0 bg-white p-4 border border-blue-100 rounded-md shadow-sm">
                       {consegna.valutazione ? (
                         <div className="flex flex-col h-full justify-between">
                           <div>
@@ -167,7 +182,7 @@ export default function ValutazioneProva() {
                               {consegna.valutazione.voto === 31 ? "30L" : consegna.valutazione.voto}
                               <span className="text-lg text-gray-400 font-normal">/30</span>
                             </p>
-                            <p className="text-sm text-gray-600 mb-4">
+                            <p className="text-sm text-gray-600 mb-4 break-words">
                               <span className="font-medium">Feedback:</span> {consegna.valutazione.feedbackDocente || "Nessun feedback."}
                             </p>
                           </div>
@@ -183,35 +198,37 @@ export default function ValutazioneProva() {
                         <div className="space-y-3">
                           <p className="text-sm font-semibold text-blue-900">Assegna un voto</p>
 
-                          <div className="bg-purple-50/50 p-2.5 rounded-md border border-purple-100">
-                            <label className="block text-xs font-medium text-purple-900 mb-1">
-                              💡 Indicazioni per l'IA (opzionale)
-                            </label>
-                            <textarea
-                              rows={2}
-                              placeholder="Es: Togli 2 punti perché in ritardo..."
-                              value={istruzioniIa[consegna.id] || ""}
-                              onChange={(e) => setIstruzioniIa({ ...istruzioniIa, [consegna.id]: e.target.value })}
-                              className="w-full px-2.5 py-1.5 border border-purple-200 rounded text-xs text-gray-800 bg-white outline-none focus:ring-1 focus:ring-purple-400"
-                            />
-                            
-                            <div className="flex gap-2 mt-2">
-                              <button 
-                                onClick={() => handleGeneraIA(consegna.id, "groq")}
-                                disabled={loadingAi[consegna.id]}
-                                className="flex-1 bg-purple-100 text-purple-700 border border-purple-300 py-1.5 rounded text-xs font-semibold hover:bg-purple-200 transition-colors disabled:opacity-50"
-                              >
-                                {loadingAi[consegna.id] ? "..." : "🤖 Groq"}
-                              </button>
-                              <button 
-                                onClick={() => handleGeneraIA(consegna.id, "gemini")}
-                                disabled={loadingAi[consegna.id]}
-                                className="flex-1 bg-blue-100 text-blue-700 border border-blue-300 py-1.5 rounded text-xs font-semibold hover:bg-blue-200 transition-colors disabled:opacity-50"
-                              >
-                                {loadingAi[consegna.id] ? "..." : "✨ Gemini"}
-                              </button>
+                          {!iaGlobalmenteDisabilitata && (
+                            <div className="bg-purple-50/50 p-2.5 rounded-md border border-purple-100">
+                              <label className="block text-xs font-medium text-purple-900 mb-1">
+                                💡 Indicazioni per l'IA (opzionale)
+                              </label>
+                              <textarea
+                                rows={2}
+                                placeholder="Es: Togli 2 punti perché in ritardo..."
+                                value={istruzioniIa[consegna.id] || ""}
+                                onChange={(e) => setIstruzioniIa(prev => ({ ...prev, [consegna.id]: e.target.value }))}
+                                className="w-full px-2.5 py-1.5 border border-purple-200 rounded text-xs text-gray-800 bg-white outline-none focus:ring-1 focus:ring-purple-400"
+                              />
+                              
+                              <div className="flex gap-2 mt-2">
+                                <button 
+                                  onClick={() => handleGeneraIA(consegna.id, "groq")}
+                                  disabled={loadingAi[consegna.id] || providerDisabilitati.groq}
+                                  className="flex-1 bg-purple-100 text-purple-700 border border-purple-300 py-1.5 rounded text-xs font-semibold hover:bg-purple-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {loadingAi[consegna.id] ? "..." : "🤖 Groq"}
+                                </button>
+                                <button 
+                                  onClick={() => handleGeneraIA(consegna.id, "gemini")}
+                                  disabled={loadingAi[consegna.id] || providerDisabilitati.gemini}
+                                  className="flex-1 bg-blue-100 text-blue-700 border border-blue-300 py-1.5 rounded text-xs font-semibold hover:bg-blue-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {loadingAi[consegna.id] ? "..." : "✨ Gemini"}
+                                </button>
+                              </div>
                             </div>
-                          </div>
+                          )}
 
                           <hr className="border-gray-100" />
 
@@ -221,7 +238,7 @@ export default function ValutazioneProva() {
                               type="number" 
                               step="0.5" min="0" max="31"
                               value={voti[consegna.id] || ""}
-                              onChange={(e) => setVoti({ ...voti, [consegna.id]: e.target.value })}
+                              onChange={(e) => setVoti(prev => ({ ...prev, [consegna.id]: e.target.value }))}
                               className="w-full px-3 py-1.5 border rounded-md text-sm text-gray-900 bg-white outline-none focus:ring-blue-500"
                             />
                           </div>
@@ -230,7 +247,7 @@ export default function ValutazioneProva() {
                             <textarea 
                               rows={4}
                               value={feedbacks[consegna.id] || ""}
-                              onChange={(e) => setFeedbacks({ ...feedbacks, [consegna.id]: e.target.value })}
+                              onChange={(e) => setFeedbacks(prev => ({ ...prev, [consegna.id]: e.target.value }))}
                               className="w-full px-3 py-1.5 border rounded-md text-sm text-gray-900 bg-white outline-none focus:ring-blue-500"
                             ></textarea>
                           </div>
@@ -241,7 +258,7 @@ export default function ValutazioneProva() {
                             Salva Valutazione
                           </button>
                           {messaggio[consegna.id] && (
-                            <p className={`text-xs text-center font-semibold mt-1 ${messaggio[consegna.id].includes('Errore') ? 'text-red-600' : 'text-green-600'}`}>
+                            <p className={`text-xs text-center font-semibold mt-1 ${messaggio[consegna.id].includes('Errore') || messaggio[consegna.id].includes('non è configurata') ? 'text-red-600' : 'text-green-600'}`}>
                               {messaggio[consegna.id]}
                             </p>
                           )}

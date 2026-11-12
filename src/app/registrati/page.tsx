@@ -61,10 +61,10 @@ export default function Registrazione() {
               name="email" 
               required 
               onChange={handleChange} 
-              placeholder="nome.cognome@...uni.it"
-              pattern="^[a-zA-Z0-9_'-]+\.[a-zA-Z0-9_'-]+@(studenti|docenti)\.uni\.it$"
-              title="Inserisci nome.cognome@studenti.uni.it oppure @docenti.uni.it"
-              className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-900 placeholder-gray-200" 
+              placeholder="nome.cognome@studenti.uni.it"
+              pattern="^[a-zA-Z0-9_'-]+\.[a-zA-Z0-9_'-]+@(studenti)\.uni\.it$"
+              title="Inserisci nome.cognome@studenti.uni.it"
+              className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-900 placeholder-gray-400" 
             />
           </div>
 

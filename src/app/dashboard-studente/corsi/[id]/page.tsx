@@ -101,7 +101,7 @@ export default function DettaglioCorsoStudente() {
         
         <div className="mb-8">
           <Link href="/dashboard-studente" className="text-sm text-blue-600 hover:underline mb-2 inline-block">
-            &larr; Torna ai corsi
+            ← Torna ai corsi
           </Link>
           <h1 className="text-3xl font-bold text-gray-900">{corso.nome}</h1>
           <p className="text-gray-600">Docente: {corso.docente.nome} {corso.docente.cognome}</p>
@@ -113,22 +113,37 @@ export default function DettaglioCorsoStudente() {
             <p className="text-sm text-gray-600 mb-4">
               Hai completato il <span className="font-bold text-gray-900">{corso.statistiche.pesoValutato}%</span> del corso.
             </p>
+            {corso.statistiche.superato && (
+              <span className="inline-block px-3 py-1 bg-green-100 text-green-800 text-sm font-bold rounded-full">
+                🎉 Esame Superato
+              </span>
+            )}
+            {corso.statistiche.bocciato && (
+              <span className="inline-block px-3 py-1 bg-red-100 text-red-800 text-sm font-bold rounded-full">
+                ❌ Esame Non Superato
+              </span>
+            )}
           </div>
           <div className="flex gap-4 w-full md:w-auto">
-            <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg text-center flex-1">
-              <p className="text-xs font-semibold text-blue-800 uppercase tracking-wide">Voto Attuale</p>
-              <p className="text-3xl font-bold text-blue-900 mt-1">
-                {corso.statistiche.votoAttuale >= 31 ? "30L" : corso.statistiche.votoAttuale}
-                <span className="text-lg text-blue-600">/30</span>
+            <div className={`border p-4 rounded-lg text-center flex-1 min-w-[140px] ${corso.statistiche.pesoValutato >= 100 ? 'bg-green-50 border-green-200' : 'bg-blue-50 border-blue-100'}`}>
+              <p className={`text-xs font-semibold uppercase tracking-wide ${corso.statistiche.pesoValutato >= 100 ? 'text-green-800' : 'text-blue-800'}`}>
+                {corso.statistiche.pesoValutato >= 100 ? "Voto Finale" : "Voto Attuale"}
+              </p>
+              <p className={`text-3xl font-bold mt-1 ${corso.statistiche.pesoValutato >= 100 ? 'text-green-900' : 'text-blue-900'}`}>
+                {corso.statistiche.votoFormattato}
               </p>
             </div>
-            <div className="bg-gray-50 border border-gray-200 p-4 rounded-lg text-center flex-1">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Max Raggiungibile</p>
-              <p className="text-3xl font-bold text-gray-700 mt-1">
-                {corso.statistiche.votoMassimo >= 31 ? "30L" : corso.statistiche.votoMassimo}
-                <span className="text-lg text-gray-400">/30</span>
-              </p>
-            </div>
+            
+            {corso.statistiche.pesoValutato < 100 && (
+              <div className="bg-gray-50 border border-gray-200 p-4 rounded-lg text-center flex-1 min-w-[140px]">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Max Raggiungibile</p>
+                <p className="text-3xl font-bold text-gray-700 mt-1">
+                  {corso.statistiche.votoMassimo !== null 
+                    ? (corso.statistiche.votoMassimo >= 30.5 ? "30 e lode" : `${Math.round(corso.statistiche.votoMassimo)}/30`) 
+                    : <span className="text-sm font-normal italic text-gray-400">Incompleto</span>}
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -190,7 +205,7 @@ export default function DettaglioCorsoStudente() {
                         {consegnaEffettuata.valutazione ? (
                           <div className={`mt-3 p-3 bg-white border rounded ${inRitardo ? 'border-yellow-300' : 'border-green-300'}`}>
                             <p className="text-sm font-bold text-gray-900">
-                              Voto: {consegnaEffettuata.valutazione.voto === 31 ? "30L" : consegnaEffettuata.valutazione.voto} / 30
+                              Voto: {consegnaEffettuata.valutazione.voto >= 30.5 ? "30L" : Math.round(consegnaEffettuata.valutazione.voto)} / 30
                             </p>
                             {consegnaEffettuata.valutazione.feedbackDocente && (
                               <p className="text-sm text-gray-700 mt-1">Feedback Docente: {consegnaEffettuata.valutazione.feedbackDocente}</p>
@@ -249,7 +264,6 @@ export default function DettaglioCorsoStudente() {
             </div>
           )}
         </div>
-
       </div>
     </div>
   );

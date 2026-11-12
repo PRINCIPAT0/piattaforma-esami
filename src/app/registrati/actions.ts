@@ -6,9 +6,9 @@ import bcrypt from "bcryptjs";
 
 export async function registraUtente(dati: any) {
 
-  const regexEmail = /^[a-zA-Z0-9_'-]+\.[a-zA-Z0-9_'-]+@(studenti|docenti)\.uni\.it$/i;
+  const regexEmail = /^[a-zA-Z0-9_'-]+\.[a-zA-Z0-9_'-]+@(studenti)\.uni\.it$/i;
   if (!regexEmail.test(dati.email)) {
-    return { success: false, error: "Devi usare nome.cognome@studenti.uni.it oppure nome.cognome@docenti.uni.it" };
+    return { success: false, error: "Devi usare nome.cognome@studenti.uni.it" };
   }
 
   const nomePulito = dati.nome.toLowerCase().replace(/[^a-z0-9]/g, '');

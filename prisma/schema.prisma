@@ -15,16 +15,13 @@ model User {
   email     String   @unique
   password  String
   ruolo     Role     @default(STUDENTE)
+  attivo    Boolean  @default(true)
   matricola String?  @unique
-
-  corsiInsegnati Corso[]       @relation("DocenteCorsi")
+  corsiInsegnati Corso[]        @relation("DocenteCorsi")
   iscrizioni     Iscrizione[]
-  consegne       Consegna[]
-}
-
-enum Role {
-  STUDENTE
-  DOCENTE
+  consegne       Consegna[] 
+  sessions       Session[]
+  esiti          EsitoFinale[]
 }
 
 // 2. Corsi
@@ -34,32 +31,31 @@ model Corso {
   annoAccad   String
   docenteId   Int
   docente     User     @relation("DocenteCorsi", fields: [docenteId], references: [id])
-
   iscrizioni  Iscrizione[]
   prove       Prova[]
+  esiti       EsitoFinale[]
 }
 
 // 3. Iscrizioni
 model Iscrizione {
   studenteId Int
   corsoId    Int
+  attiva     Boolean @default(true)
   studente   User  @relation(fields: [studenteId], references: [id])
-  corso Corso @relation(fields: [corsoId], references: [id], onDelete: Cascade)
-
+  corso      Corso @relation(fields: [corsoId], references: [id], onDelete: Cascade)
   @@id([studenteId, corsoId])
 }
 
 // 4. Prove
 model Prova {
-  id          Int       @id @default(autoincrement())
+  id          Int        @id @default(autoincrement())
   titolo      String
   descrizione String?
   tipo        TipoProva
   scadenza    DateTime
   peso        Float
   corsoId     Int
-  corso Corso @relation(fields: [corsoId], references: [id], onDelete: Cascade)
-
+  corso       Corso      @relation(fields: [corsoId], references: [id], onDelete: Cascade)
   consegne    Consegna[]
 }
 
@@ -72,10 +68,10 @@ model Consegna {
   dataConsegna DateTime @default(now())
   provaId      Int
   studenteId   Int
-
-  prova Prova @relation(fields: [provaId], references: [id], onDelete: Cascade)
-  studente     User     @relation(fields: [studenteId], references: [id])
-  valutazione  Valutazione?
+  prova       Prova       @relation(fields: [provaId], references: [id], onDelete: Cascade)
+  studente    User        @relation(fields: [studenteId], references: [id])
+  valutazione Valutazione?
+  @@unique([studenteId, provaId])
 }
 
 // 6. Valutazioni
@@ -85,12 +81,43 @@ model Valutazione {
   feedbackDocente String?
   feedbackAi      String?
   consegnaId      Int      @unique
-  consegna Consegna @relation(fields: [consegnaId], references: [id], onDelete: Cascade)
+  consegna        Consegna @relation(fields: [consegnaId], references: [id], onDelete: Cascade)
 }
+
+// 7. Sessioni (Sicurezza)
+model Session {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+// 8. Storico Esiti Finali
+model EsitoFinale {
+  id         Int      @id @default(autoincrement())
+  votoFinale Float
+  lode       Boolean  @default(false)
+  data       DateTime @default(now())
+  studenteId Int
+  corsoId    Int
+  studente   User  @relation(fields: [studenteId], references: [id], onDelete: Cascade)
+  corso      Corso @relation(fields: [corsoId], references: [id], onDelete: Cascade)
+  @@unique([studenteId, corsoId]) // Uno studente ha un solo esito finale per corso
+}
+
 
 enum TipoProva {
   HOMEWORK
   IN_ITINERE
   PROVA_FINALE
   PROGETTO
+}
+
+
+enum Role {
+  STUDENTE
+  DOCENTE
+  SUPERADMIN
 }
